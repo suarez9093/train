@@ -15,11 +15,32 @@ var database = firebase.database();
 $(document).on("click","#submitButton", function(event){
   event.preventDefault();
 
-// Get the value of the user input for train, destination, train time, frequency and store in a varibale
+// Variables
+// =================================================================================================
+
+// Gets user input of the train and stores in a variable 
 var trainName = $("#train-name").val().trim();
+// Gets the user input of the desination and stores in a variable
 var destinationName = $("#destination").val().trim();
-var trainTime = $("#train-time").val().trim();
-var frequencyTime = $("#frequency").val().trim();
+// Gets the value of the first arrival and stores in a variable
+var trainTime = moment($("#train-time").val().trim(), "HH:mm").format("HH:mm")
+console.log("First train time:",trainTime)
+// Gets the value of how frequent the train comes and stores in a variable
+var frequencyTime = moment($("#frequency").val().trim(), "m").format("m");
+console.log("Frequency time",frequencyTime);
+// Gets the current time in military time
+var now = moment().format("HH:mm");
+console.log("Current time:",now);
+
+
+// Next arrival has to compare: first arrival and the frequency. 
+var nextTrain = moment(trainTime,"HH:mm").add(frequencyTime,"HH:mm").format("HH:mm");
+console.log("Next train: ", nextTrain);
+
+// console.log("Next train HTML:",nextTrainHTML);
+
+
+// Compare frequency to current time and 
 
 // Creating a temporary object to hold train info
 
@@ -27,18 +48,14 @@ var newTrain = {
   name: trainName,
   destination: destinationName,
   time: trainTime,
-  frequency: frequencyTime
+  frequency: frequencyTime,
 };
+
+// console.log(newTrain)
 
 // uploads the newTrain to the database
 database.ref().push(newTrain);
 
-// log to the console to make sure everything is working 
-
-console.log(newTrain.name);
-console.log(newTrain.destination);
-console.log(newTrain.time);
-console.log(newTrain.frequency);
 
 alert("New train added")
 
@@ -49,34 +66,45 @@ $("#frequency").val("");
 
 });
 
+var firstTrain;
+
 // Creating a firebase event for adding train to the database and a row in HTML
 database.ref().on("child_added", function(childSnapshot){
-  console.log("Snapshot",childSnapshot.val());
+  console.log("Child Snapshot:",childSnapshot)
+var nextArr;
+var minAway;
+
+// Change year so first train comes before now
+var firstTrainNew = moment(childSnapshot.val().trainTime, "hh:mm").subtract(1, "years");
+console.log("First Train New: ",firstTrainNew);
+var diffTime = moment().diff(moment(firstTrainNew), "minutes");
+console.log("Difference between current and firstTrain: ", diffTime);
+var remainder = diffTime % childSnapshot.frequency;
+console.log("Remainder: ", remainder);
+var minAway = childSnapshot.val().frequency - remainder;
+console.log("Minutes Away: ", minAway);
+// Next train time
+var nextTrain = moment().add(minAway, "minutes");
+nextTrain = moment(nextTrain).format("hh:mm");
+console.log("Next train: ", nextTrain);
+
+
 
 var trainName = childSnapshot.val().name;
 var destinationName = childSnapshot.val().destination;
 var trainTime = childSnapshot.val().time;
 var frequencyTime = childSnapshot.val().frequency;
+var nextTrainHTML = childSnapshot.val().upcoming;
 
-// Train Info
-console.log(trainName);
-console.log(destinationName);
-console.log(trainTime);
-console.log(frequencyTime);
 
-var trainStartTime = moment.unix(trainTime).format("HH:mm");
-console.log(trainStartTime);
-
-var frequencyMomentTime = moment.unix(frequencyTime).format();
-console.log(frequencyMomentTime);
 
 var newRow = $("<tr>").append(
   $("<td>").text(trainName),
   $("<td>").text(destinationName),
-  $("<td>").text(trainTime),
-  $("<td>").text(frequencyTime)
+  $("<td>").text(frequencyTime + " min"),
+  $("<td>").text(nextTrainHTML),
+  // $("<td>").text(frequencyTime)
 );
-
 
 
 // append the new row to the table
